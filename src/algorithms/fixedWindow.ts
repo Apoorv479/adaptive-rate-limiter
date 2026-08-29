@@ -1,22 +1,24 @@
 import redis from "../redis/client.js";
+import {
+  RateLimiter,
+  RateLimitResult,
+} from "./ratelimiter.js";
 
 export interface FixedWindowConfig {
   limit: number;
   windowSeconds: number;
 }
 
-export class FixedWindowLimiter {
+export class FixedWindowLimiter implements RateLimiter {
   constructor(private config: FixedWindowConfig) {}
 
   async tryConsume(
     key: string
-  ): Promise<{
-    allowed: boolean;
-    remaining: number;
-    resetAfter: number;
-  }> {
+  ): Promise<RateLimitResult> {
+    const now = Date.now();
+
     const windowId = Math.floor(
-      Date.now() / 1000 / this.config.windowSeconds
+      now / 1000 / this.config.windowSeconds
     );
 
     const redisKey = `fixed-window:${key}:${windowId}`;
@@ -30,7 +32,8 @@ export class FixedWindowLimiter {
       );
     }
 
-    const allowed = count <= this.config.limit;
+    const allowed =
+      count <= this.config.limit;
 
     const remaining = Math.max(
       0,
@@ -38,7 +41,7 @@ export class FixedWindowLimiter {
     );
 
     const elapsed =
-      Math.floor(Date.now() / 1000) %
+      Math.floor(now / 1000) %
       this.config.windowSeconds;
 
     const resetAfter =

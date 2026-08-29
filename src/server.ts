@@ -1,14 +1,15 @@
-import { LeakyBucketLimiter } from "./algorithms/leakyBucket.js";
-
-const limiter = new LeakyBucketLimiter({
-  capacity: 5,
-  leakRate: 1,
-});
+import {
+  createRateLimiter,
+} from "./algorithms/factory.js";
 
 async function start() {
-  for (let i = 1; i <= 8; i++) {
+  const limiter = createRateLimiter(
+    "token-bucket"
+  );
+
+  for (let i = 1; i <= 7; i++) {
     const result = await limiter.tryConsume(
-      "test-client"
+      "factory-test"
     );
 
     console.log(`Request ${i}:`, result);

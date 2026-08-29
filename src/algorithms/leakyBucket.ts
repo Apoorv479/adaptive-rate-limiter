@@ -1,24 +1,28 @@
 import redis from "../redis/client.js";
+import {
+  RateLimiter,
+  RateLimitResult,
+} from "./ratelimiter.js";
 
 export interface LeakyBucketConfig {
   capacity: number;
   leakRate: number;
 }
 
-export interface LeakyBucketResult {
-  allowed: boolean;
-  remaining: number;
-}
-
-export class LeakyBucketLimiter {
-  constructor(private config: LeakyBucketConfig) {}
+export class LeakyBucketLimiter
+  implements RateLimiter
+{
+  constructor(
+    private config: LeakyBucketConfig
+  ) {}
 
   async tryConsume(
     key: string
-  ): Promise<LeakyBucketResult> {
-    const redisKey = `leaky-bucket:${key}`;
+  ): Promise<RateLimitResult> {
+    const redisKey =
+      `leaky-bucket:${key}`;
 
-    const currentTime = Date.now();
+    const now = Date.now();
 
     const data = await redis.hmget(
       redisKey,
@@ -26,22 +30,34 @@ export class LeakyBucketLimiter {
       "last_leak"
     );
 
-    let water = Number(data[0]) || 0;
-    let lastLeak = Number(data[1]) || currentTime;
+    let water =
+      Number(data[0]) || 0;
 
-    // Calculate how much water leaked since last request
+    let lastLeak =
+      Number(data[1]) || now;
+
+    // Calculate elapsed time.
     const elapsedSeconds =
-      (currentTime - lastLeak) / 1000;
+      (now - lastLeak) / 1000;
 
+    // Calculate leaked water.
     const leaked =
-      elapsedSeconds * this.config.leakRate;
+      elapsedSeconds *
+      this.config.leakRate;
 
-    water = Math.max(0, water - leaked);
+    // Remove leaked water.
+    water = Math.max(
+      0,
+      water - leaked
+    );
 
-    lastLeak = currentTime;
+    lastLeak = now;
 
-    // Bucket is full
-    if (water + 1 > this.config.capacity) {
+    // Bucket is full.
+    if (
+      water + 1 >
+      this.config.capacity
+    ) {
       await redis
         .multi()
         .hset(redisKey, {
@@ -60,10 +76,13 @@ export class LeakyBucketLimiter {
       return {
         allowed: false,
         remaining: 0,
+        resetAfter: Math.ceil(
+          1 / this.config.leakRate
+        ),
       };
     }
 
-    // Add request to bucket
+    // Add request.
     water += 1;
 
     await redis
@@ -86,8 +105,12 @@ export class LeakyBucketLimiter {
       remaining: Math.max(
         0,
         Math.floor(
-          this.config.capacity - water
+          this.config.capacity -
+            water
         )
+      ),
+      resetAfter: Math.ceil(
+        1 / this.config.leakRate
       ),
     };
   }

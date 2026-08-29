@@ -1,12 +1,16 @@
 import fs from "node:fs";
 import redis from "../redis/client.js";
+import {
+  RateLimiter,
+  RateLimitResult,
+} from "./ratelimiter.js";
 
 export interface TokenBucketConfig {
   capacity: number;
   refillRate: number;
 }
 
-export class RedisTokenBucket {
+export class RedisTokenBucket implements RateLimiter {
   private script: string;
 
   constructor(private config: TokenBucketConfig) {
@@ -19,10 +23,7 @@ export class RedisTokenBucket {
   async tryConsume(
     key: string,
     tokens = 1
-  ): Promise<{
-    allowed: boolean;
-    remaining: number;
-  }> {
+  ): Promise<RateLimitResult> {
     const now = Date.now();
 
     const result = (await redis.eval(
@@ -37,7 +38,10 @@ export class RedisTokenBucket {
 
     return {
       allowed: result[0] === 1,
-      remaining: result[1],
+      remaining: Math.floor(result[1]),
+      resetAfter: Math.ceil(
+        1 / this.config.refillRate
+      ),
     };
   }
 }
