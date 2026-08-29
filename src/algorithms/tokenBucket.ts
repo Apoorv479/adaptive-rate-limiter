@@ -1,44 +1,39 @@
+import redis from "../redis/client.js";
+
 export interface TokenBucketConfig {
   capacity: number;
   refillRate: number;
 }
 
-export class TokenBucket {
-  private tokens: number;
-  private lastRefillTime: number;
+export class RedisTokenBucket {
+  private script: string;
 
-  constructor(private config: TokenBucketConfig) {
-    this.tokens = config.capacity;
-    this.lastRefillTime = Date.now();
+  constructor(private config: TokenBucketConfig, script: string) {
+    this.script = script;
   }
 
-  private refill(): void {
+  async tryConsume(
+    key: string,
+    tokens = 1
+  ): Promise<{
+    allowed: boolean;
+    remaining: number;
+  }> {
     const now = Date.now();
-    const elapsedSeconds = (now - this.lastRefillTime) / 1000;
 
-    const newTokens = elapsedSeconds * this.config.refillRate;
-
-    this.tokens = Math.min(
+    const result = (await redis.eval(
+      this.script,
+      1,
+      key,
       this.config.capacity,
-      this.tokens + newTokens
-    );
+      this.config.refillRate,
+      tokens,
+      now
+    )) as [number, number];
 
-    this.lastRefillTime = now;
-  }
-
-  public tryConsume(tokens = 1): boolean {
-    this.refill();
-
-    if (this.tokens < tokens) {
-      return false;
-    }
-
-    this.tokens -= tokens;
-    return true;
-  }
-
-  public getAvailableTokens(): number {
-    this.refill();
-    return this.tokens;
+    return {
+      allowed: result[0] === 1,
+      remaining: result[1],
+    };
   }
 }
