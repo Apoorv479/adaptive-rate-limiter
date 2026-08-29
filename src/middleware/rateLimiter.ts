@@ -1,24 +1,46 @@
-import { FastifyReply, FastifyRequest } from "fastify";
-import { RedisTokenBucket } from "../algorithms/tokenBucket.js";
-import { PolicyEngine } from "../policy/policyEngine.js";
-import { apiKeys, UserPlan } from "../policy/policies.js";
+import {
+  FastifyReply,
+  FastifyRequest,
+} from "fastify";
 
-const policyEngine = new PolicyEngine();
+import {
+  createRateLimiter,
+  Algorithm,
+} from "../algorithms/factory.js";
+
+import { config } from "../config.js";
+
+import {
+  apiKeys,
+  UserPlan,
+} from "../policy/policies.js";
+
+const algorithm =
+  config.rateLimitAlgorithm as Algorithm;
+
+const policyEngineLimiter =
+  createRateLimiter(algorithm);
 
 export async function rateLimiter(
   request: FastifyRequest,
   reply: FastifyReply
 ) {
-  const apiKey = request.headers["x-api-key"];
+  const apiKey =
+    request.headers["x-api-key"];
 
-  if (!apiKey || typeof apiKey !== "string") {
+  if (
+    !apiKey ||
+    typeof apiKey !== "string"
+  ) {
     return reply.status(401).send({
       error: "Unauthorized",
-      message: "X-API-Key header is required",
+      message:
+        "X-API-Key header is required",
     });
   }
 
-  const plan = apiKeys[apiKey] as UserPlan | undefined;
+  const plan =
+    apiKeys[apiKey] as UserPlan | undefined;
 
   if (!plan) {
     return reply.status(401).send({
@@ -27,21 +49,11 @@ export async function rateLimiter(
     });
   }
 
-  const policy = policyEngine.getPolicy(
-    plan,
-    request.url
-  );
+  const key =
+    `${plan}:${apiKey}:${request.url}`;
 
-  const bucket = new RedisTokenBucket(policy);
-
-  const key = `rate-limit:${apiKey}:${request.url}`;
-
-  const result = await bucket.tryConsume(key);
-
-  reply.header(
-    "X-RateLimit-Limit",
-    policy.capacity
-  );
+  const result =
+    await policyEngineLimiter.tryConsume(key);
 
   reply.header(
     "X-RateLimit-Remaining",
@@ -49,7 +61,10 @@ export async function rateLimiter(
   );
 
   if (!result.allowed) {
-    reply.header("Retry-After", 60);
+    reply.header(
+      "Retry-After",
+      result.resetAfter
+    );
 
     return reply.status(429).send({
       error: "Too Many Requests",

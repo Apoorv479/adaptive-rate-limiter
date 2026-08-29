@@ -1,21 +1,37 @@
-import {
-  createRateLimiter,
-} from "./algorithms/factory.js";
+import Fastify from "fastify";
+import { apiRoutes } from "./routes/api.js";
+import { config } from "./config.js";
 
-async function start() {
-  const limiter = createRateLimiter(
-    "token-bucket"
-  );
+const app = Fastify({
+  logger: true,
+});
 
-  for (let i = 1; i <= 7; i++) {
-    const result = await limiter.tryConsume(
-      "factory-test"
+app.register(apiRoutes);
+
+app.get("/health", async () => {
+  return {
+    status: "ok",
+  };
+});
+
+const start = async () => {
+  try {
+    await app.listen({
+      port: config.port,
+      host: "0.0.0.0",
+    });
+
+    console.log(
+      `Server running on http://localhost:${config.port}`
     );
 
-    console.log(`Request ${i}:`, result);
+    console.log(
+      `Rate limit algorithm: ${config.rateLimitAlgorithm}`
+    );
+  } catch (error) {
+    app.log.error(error);
+    process.exit(1);
   }
-
-  process.exit(0);
-}
+};
 
 start();
