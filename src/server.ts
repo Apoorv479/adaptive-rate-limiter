@@ -1,8 +1,8 @@
-import { SlidingWindowLimiter } from "./algorithms/slidingWindow.js";
+import { LeakyBucketLimiter } from "./algorithms/leakyBucket.js";
 
-const limiter = new SlidingWindowLimiter({
-  limit: 5,
-  windowSeconds: 60,
+const limiter = new LeakyBucketLimiter({
+  capacity: 5,
+  leakRate: 1,
 });
 
 async function start() {
