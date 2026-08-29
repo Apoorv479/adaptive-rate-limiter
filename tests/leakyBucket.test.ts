@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { SlidingWindowLimiter } from "../src/algorithms/slidingWindow.js";
+import { LeakyBucketLimiter } from "../src/algorithms/leakyBucket.js";
 
-describe("Sliding Window Limiter", () => {
-  it("allows requests within the limit", async () => {
-    const limiter = new SlidingWindowLimiter({
-      limit: 3,
-      windowSeconds: 60,
+describe("Leaky Bucket Limiter", () => {
+  it("allows requests until bucket is full", async () => {
+    const limiter = new LeakyBucketLimiter({
+      capacity: 3,
+      leakRate: 0.01,
     });
 
-    const key = `test:sliding:${Date.now()}`;
+    const key = `test:leaky:${Date.now()}`;
 
     const first = await limiter.tryConsume(key);
     const second = await limiter.tryConsume(key);
@@ -19,13 +19,13 @@ describe("Sliding Window Limiter", () => {
     expect(third.allowed).toBe(true);
   });
 
-  it("rejects requests after limit is reached", async () => {
-    const limiter = new SlidingWindowLimiter({
-      limit: 3,
-      windowSeconds: 60,
+  it("rejects requests when bucket is full", async () => {
+    const limiter = new LeakyBucketLimiter({
+      capacity: 3,
+      leakRate: 0.01,
     });
 
-    const key = `test:sliding:reject:${Date.now()}`;
+    const key = `test:leaky:reject:${Date.now()}`;
 
     await limiter.tryConsume(key);
     await limiter.tryConsume(key);
@@ -37,13 +37,13 @@ describe("Sliding Window Limiter", () => {
     expect(fourth.remaining).toBe(0);
   });
 
-  it("tracks remaining requests", async () => {
-    const limiter = new SlidingWindowLimiter({
-      limit: 5,
-      windowSeconds: 60,
+  it("tracks remaining capacity", async () => {
+    const limiter = new LeakyBucketLimiter({
+      capacity: 5,
+      leakRate: 0.01,
     });
 
-    const key = `test:sliding:remaining:${Date.now()}`;
+    const key = `test:leaky:remaining:${Date.now()}`;
 
     const result = await limiter.tryConsume(key);
 

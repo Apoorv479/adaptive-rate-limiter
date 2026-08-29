@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { SlidingWindowLimiter } from "../src/algorithms/slidingWindow.js";
+import { FixedWindowLimiter } from "../src/algorithms/fixedWindow.js";
 
-describe("Sliding Window Limiter", () => {
+describe("Fixed Window Limiter", () => {
   it("allows requests within the limit", async () => {
-    const limiter = new SlidingWindowLimiter({
+    const limiter = new FixedWindowLimiter({
       limit: 3,
       windowSeconds: 60,
     });
 
-    const key = `test:sliding:${Date.now()}`;
+    const key = `test:fixed:${Date.now()}`;
 
     const first = await limiter.tryConsume(key);
     const second = await limiter.tryConsume(key);
@@ -20,12 +20,12 @@ describe("Sliding Window Limiter", () => {
   });
 
   it("rejects requests after limit is reached", async () => {
-    const limiter = new SlidingWindowLimiter({
+    const limiter = new FixedWindowLimiter({
       limit: 3,
       windowSeconds: 60,
     });
 
-    const key = `test:sliding:reject:${Date.now()}`;
+    const key = `test:fixed:reject:${Date.now()}`;
 
     await limiter.tryConsume(key);
     await limiter.tryConsume(key);
@@ -38,12 +38,12 @@ describe("Sliding Window Limiter", () => {
   });
 
   it("tracks remaining requests", async () => {
-    const limiter = new SlidingWindowLimiter({
+    const limiter = new FixedWindowLimiter({
       limit: 5,
       windowSeconds: 60,
     });
 
-    const key = `test:sliding:remaining:${Date.now()}`;
+    const key = `test:fixed:remaining:${Date.now()}`;
 
     const result = await limiter.tryConsume(key);
 
