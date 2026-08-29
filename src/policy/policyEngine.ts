@@ -1,21 +1,26 @@
 import {
+  planPolicies,
   UserPlan,
   RateLimitPolicy,
-  planPolicies,
-  endpointPolicies,
 } from "./policies.js";
+import { PolicyStore } from "./policyStore.js";
 
 export class PolicyEngine {
-  getPolicy(
-    plan: UserPlan,
-    endpoint: string
-  ): RateLimitPolicy {
-    const endpointPolicy = endpointPolicies[endpoint];
+  private policyStore: PolicyStore;
 
-    if (endpointPolicy) {
-      return endpointPolicy;
-    }
+  constructor() {
+    this.policyStore = new PolicyStore();
+  }
 
-    return planPolicies[plan];
+  async getPolicy(
+    plan: UserPlan
+  ): Promise<RateLimitPolicy> {
+    const policy =
+      await this.policyStore.getPolicy(plan);
+
+    return (
+      policy ||
+      planPolicies[plan]
+    );
   }
 }

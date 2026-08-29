@@ -24,32 +24,46 @@ export type Algorithm =
   | "sliding-window"
   | "leaky-bucket";
 
+export interface RateLimiterPolicy {
+  capacity: number;
+  refillRate: number;
+}
+
 export function createRateLimiter(
-  algorithm: Algorithm
+  algorithm: Algorithm,
+  policy?: RateLimiterPolicy
 ): RateLimiter {
+  const effectivePolicy =
+    policy || {
+      capacity: 5,
+      refillRate: 1,
+    };
+
   switch (algorithm) {
     case "token-bucket":
       return new RedisTokenBucket({
-        capacity: 5,
-        refillRate: 1,
+        capacity: effectivePolicy.capacity,
+        refillRate:
+          effectivePolicy.refillRate,
       });
 
     case "fixed-window":
       return new FixedWindowLimiter({
-        limit: 5,
+        limit: effectivePolicy.capacity,
         windowSeconds: 60,
       });
 
     case "sliding-window":
       return new SlidingWindowLimiter({
-        limit: 5,
+        limit: effectivePolicy.capacity,
         windowSeconds: 60,
       });
 
     case "leaky-bucket":
       return new LeakyBucketLimiter({
-        capacity: 5,
-        leakRate: 1,
+        capacity: effectivePolicy.capacity,
+        leakRate:
+          effectivePolicy.refillRate,
       });
 
     default:
