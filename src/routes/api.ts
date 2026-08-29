@@ -10,7 +10,20 @@ export async function apiRoutes(app: FastifyInstance) {
     async () => {
       return {
         success: true,
-        message: "Request allowed",
+        message: "Normal API request allowed",
+      };
+    }
+  );
+
+  app.get(
+    "/api/expensive",
+    {
+      preHandler: rateLimiter,
+    },
+    async () => {
+      return {
+        success: true,
+        message: "Expensive API request allowed",
       };
     }
   );
