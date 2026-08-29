@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { RedisTokenBucket } from "../algorithms/tokenBucket.js";
 import { PolicyEngine } from "../policy/policyEngine.js";
-import { UserPlan } from "../policy/policies.js";
+import { apiKeys, UserPlan } from "../policy/policies.js";
 
 const policyEngine = new PolicyEngine();
 
@@ -9,7 +9,23 @@ export async function rateLimiter(
   request: FastifyRequest,
   reply: FastifyReply
 ) {
-  const plan: UserPlan = "free";
+  const apiKey = request.headers["x-api-key"];
+
+  if (!apiKey || typeof apiKey !== "string") {
+    return reply.status(401).send({
+      error: "Unauthorized",
+      message: "X-API-Key header is required",
+    });
+  }
+
+  const plan = apiKeys[apiKey] as UserPlan | undefined;
+
+  if (!plan) {
+    return reply.status(401).send({
+      error: "Unauthorized",
+      message: "Invalid API key",
+    });
+  }
 
   const policy = policyEngine.getPolicy(
     plan,
@@ -18,7 +34,7 @@ export async function rateLimiter(
 
   const bucket = new RedisTokenBucket(policy);
 
-  const key = `rate-limit:${plan}:${request.ip}:${request.url}`;
+  const key = `rate-limit:${apiKey}:${request.url}`;
 
   const result = await bucket.tryConsume(key);
 

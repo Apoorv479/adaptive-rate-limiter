@@ -28,3 +28,9 @@ export const endpointPolicies: Record<string, RateLimitPolicy> = {
     refillRate: 3 / 60,
   },
 };
+
+export const apiKeys: Record<string, UserPlan> = {
+  "free-demo-key": "free",
+  "pro-demo-key": "pro",
+  "enterprise-demo-key": "enterprise",
+};
