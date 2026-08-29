@@ -1,6 +1,6 @@
-import { FixedWindowLimiter } from "./algorithms/fixedWindow.js";
+import { SlidingWindowLimiter } from "./algorithms/slidingWindow.js";
 
-const limiter = new FixedWindowLimiter({
+const limiter = new SlidingWindowLimiter({
   limit: 5,
   windowSeconds: 60,
 });
