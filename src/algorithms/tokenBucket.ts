@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import redis from "../redis/client.js";
 
 export interface TokenBucketConfig {
@@ -8,8 +9,11 @@ export interface TokenBucketConfig {
 export class RedisTokenBucket {
   private script: string;
 
-  constructor(private config: TokenBucketConfig, script: string) {
-    this.script = script;
+  constructor(private config: TokenBucketConfig) {
+    this.script = fs.readFileSync(
+      "src/redis/scripts/tokenBucket.lua",
+      "utf-8"
+    );
   }
 
   async tryConsume(

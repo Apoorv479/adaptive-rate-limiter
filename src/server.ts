@@ -1,27 +1,30 @@
-import fs from "node:fs";
-import { RedisTokenBucket } from "./algorithms/tokenBucket.js";
+import Fastify from "fastify";
+import { apiRoutes } from "./routes/api.js";
 
-const script = fs.readFileSync(
-  "src/redis/scripts/tokenBucket.lua",
-  "utf-8"
-);
+const app = Fastify({
+  logger: true,
+});
 
-const limiter = new RedisTokenBucket(
-  {
-    capacity: 5,
-    refillRate: 1,
-  },
-  script
-);
+app.register(apiRoutes);
 
-async function start() {
-  for (let i = 1; i <= 8; i++) {
-    const result = await limiter.tryConsume("test:user:123");
+app.get("/health", async () => {
+  return {
+    status: "ok",
+  };
+});
 
-    console.log(`Request ${i}:`, result);
+const start = async () => {
+  try {
+    await app.listen({
+      port: 3000,
+      host: "0.0.0.0",
+    });
+
+    console.log("Server running on http://localhost:3000");
+  } catch (error) {
+    app.log.error(error);
+    process.exit(1);
   }
-
-  process.exit(0);
-}
+};
 
 start();
