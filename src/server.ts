@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import { apiRoutes } from "./routes/api.js";
+import { adminRoutes } from "./routes/admin.js";
 import { config } from "./config.js";
 
 const app = Fastify({
@@ -7,6 +8,7 @@ const app = Fastify({
 });
 
 app.register(apiRoutes);
+app.register(adminRoutes);
 
 app.get("/health", async () => {
   return {
